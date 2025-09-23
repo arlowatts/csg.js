@@ -1,34 +1,44 @@
-// create a simple stl file and download it
+import { Sphere } from './primitives.js';
+import { mesh } from './mesh.js';
+
+// initialize a sphere with radius 1
+let sphere = new Sphere(0, 0, 0, 1);
+
+// approximate the sphere as a mesh with resolution 0.1
+const faces = mesh(sphere, 0.1);
 
 // the header of an stl file is 80 bytes and can be empty
 const header = new Uint8Array(80);
 
-// a single 32-bit unsigned integer represents the number of triangles
-const triangleCount = new Uint32Array([4]);
+// a single 32-bit unsigned integer represents the number of faces
+const triangleCount = new Uint32Array([faces.length]);
 
 // define an empty normal vector
 const normalVector = new Float32Array([0, 0, 0]);
 
-// define the vertices
-const vertices = [
-    new Float32Array([0, 0, 0]),
-    new Float32Array([0, 0, 1]),
-    new Float32Array([0, 1, 0]),
-    new Float32Array([1, 0, 0]),
-];
+// define a default attribute byte
+const attributeByteCount = new Uint16Array([0]);
 
-// define a default attribute byte count
-const attributeByteCount = new Uint16Array(1);
+// initialize the data of the stl file
+const data = [header, triangleCount];
+
+// load the face data
+for (const face of faces) {
+
+    // add a normal vector
+    data.push(normalVector)
+
+    // add the vertices
+    for (const vertex of face) {
+        data.push(new Float32Array(vertex));
+    }
+
+    // add the empty attribute bytes
+    data.push(attributeByteCount);
+}
 
 // create a blob for the stl data
-const blob = new Blob([
-    header,
-    triangleCount,
-    normalVector, vertices[3], vertices[1], vertices[0], attributeByteCount,
-    normalVector, vertices[1], vertices[2], vertices[0], attributeByteCount,
-    normalVector, vertices[2], vertices[3], vertices[0], attributeByteCount,
-    normalVector, vertices[2], vertices[1], vertices[3], attributeByteCount,
-], { type: 'model/stl' });
+const blob = new Blob(data, { type: 'model/stl' });
 
 // create a url referencing the blob
 const url = URL.createObjectURL(blob);
@@ -37,6 +47,6 @@ const url = URL.createObjectURL(blob);
 // create a link to download the data
 const link = document.createElement('a');
 link.href = url;
-link.download = 'tetrahedron.stl';
-link.innerText = 'Download a tetrahedron';
+link.download = 'model.stl';
+link.innerText = 'Download';
 document.body.appendChild(link);
