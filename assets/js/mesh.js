@@ -6,11 +6,11 @@ export function mesh(shape, resolution) {
     // get the rectangular bounding volume of the shape
     const bounds = shape.bounds();
 
-    // compute the number of cells needed to cover the volume
+    // compute the number of grid points needed to cover the volume
     const size = [
-        Math.ceil((bounds[1][0] - bounds[0][0]) / resolution) + 1,
-        Math.ceil((bounds[1][1] - bounds[0][1]) / resolution) + 1,
-        Math.ceil((bounds[1][2] - bounds[0][2]) / resolution) + 1,
+        Math.ceil((bounds[1][0] - bounds[0][0]) / resolution) + 2,
+        Math.ceil((bounds[1][1] - bounds[0][1]) / resolution) + 2,
+        Math.ceil((bounds[1][2] - bounds[0][2]) / resolution) + 2,
     ];
 
     // allocate an array for the signed distance grid
@@ -64,21 +64,28 @@ export function mesh(shape, resolution) {
                 const z = bounds[0][2] + (k - 0.5) * resolution;
 
                 // access the face information from the lookup table
-                for (const face of faceLookup[faceIndex]) {
+                for (let face of faceLookup[faceIndex]) {
 
                     // access the vertices of the faces
-                    const vertices = face.map(
+                    face = face.map(
                         (vertexIndex) => vertexLookup[vertexIndex]
                     );
 
                     // convert the vertices to global coordinates
-                    faces.push(vertices.map(
+                    face = face.map(
                         (vertex) => [
                             x + vertex[0] * 0.5 * resolution,
                             y + vertex[1] * 0.5 * resolution,
                             z + vertex[2] * 0.5 * resolution,
                         ]
-                    ));
+                    );
+
+                    // triangulate the face
+                    for (let n = 2; n < face.length; n++) {
+
+                        // append the triangle to the mesh
+                        faces.push([face[0], face[n - 1], face[n]]);
+                    }
                 }
             }
         }
