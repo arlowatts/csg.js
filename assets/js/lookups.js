@@ -9,7 +9,7 @@
  *   1/_________3/           |/____3____|/            /
  */
 
-const vertexLookup = [
+export const vertexLookup = [
     [1, 0, 0],
     [0, 1, 0],
     [1, 2, 0],
@@ -24,7 +24,7 @@ const vertexLookup = [
     [2, 2, 1],
 ];
 
-const faceLookup = [
+export const faceLookup = [
     [],
     [[0, 4, 1]],
     [[0, 3, 6]],

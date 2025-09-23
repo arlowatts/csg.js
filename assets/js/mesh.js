@@ -1,4 +1,4 @@
-import { faceLookup, vectorLookup } from './lookups.js';
+import { faceLookup, vertexLookup } from './lookups.js';
 
 // return a mesh approximating a shape
 export function mesh(shape, resolution) {
