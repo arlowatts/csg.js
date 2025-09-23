@@ -1,3 +1,5 @@
+import { faceLookup, vectorLookup } from './lookups.js';
+
 // return a mesh approximating a shape
 export function mesh(shape, resolution) {
 
@@ -50,21 +52,33 @@ export function mesh(shape, resolution) {
                     signedDistances[(i + 1) + size[0] * (j + 1) + size[1] * size[2] * (k + 1)],
                 ];
 
+                // compute the index into the lookup table
+                const faceIndex = corners.reduce(
+                    (faceIndex, signedDistance, cornerIndex) => faceIndex + ((signedDistance > 0) << cornerIndex),
+                    0,
+                );
+
                 // compute the position of the current grid point
                 const x = bounds[0][0] + (i - 0.5) * resolution;
                 const y = bounds[0][1] + (j - 0.5) * resolution;
                 const z = bounds[0][2] + (k - 0.5) * resolution;
 
-                // determine the faces present in the current cell
-                if (corners[0] <= 0 &&
-                    corners[1] >  0 &&
-                    corners[2] >  0 &&
-                    corners[3] >  0 &&
-                    corners[4] >  0 &&
-                    corners[5] >  0 &&
-                    corners[6] >  0 &&
-                    corners[7] >  0) {
-                    faces.push([[x + 0.5 * resolution, y, z], [x, y + 0.5 * resolution, z], [x, y, z + 0.5 * resolution]]);
+                // access the face information from the lookup table
+                for (const face of faceLookup[faceIndex]) {
+
+                    // access the vertices of the faces
+                    const vertices = face.map(
+                        (vertexIndex) => vertexLookup[vertexIndex]
+                    );
+
+                    // convert the vertices to global coordinates
+                    faces.push(vertices.map(
+                        (vertex) => [
+                            x + vertex[0] * 0.5 * resolution,
+                            y + vertex[1] * 0.5 * resolution,
+                            z + vertex[2] * 0.5 * resolution,
+                        ]
+                    ));
                 }
             }
         }
