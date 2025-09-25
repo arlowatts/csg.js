@@ -39,28 +39,39 @@ def generate_face_lookup():
     # one vertex and inverse
     for n in range(8):
         lookup[i[n]] = [[e[0][n], e[1][n], e[2][n]]]
-        lookup[0xff ^ i[n]] = [[e[0][n], e[1][n], e[2][n]]]
+        lookup[0xff ^ i[n]] = [face[::-1] for face in lookup[i[n]]]
+
+        if n.bit_count() % 2:
+            lookup[i[n]], lookup[0xff ^ i[n]] = lookup[0xff ^ i[n]], lookup[i[n]]
 
     # two vertices sharing an edge and inverse
     for n in (0, 3, 5, 6):
         for a in range(3):
-            lookup[i[n] + i[c[a][n]]] = [[e[a+1][n], e[a+1][c[a][n]], e[a+2][c[a][n]], e[a+2][n]]]
-            lookup[0xff ^ i[n] + i[c[a][n]]] = [[e[a+1][n], e[a+1][c[a][n]], e[a+2][c[a][n]], e[a+2][n]]]
+            lookup[i[n] + i[c[a][n]]] = [[e[a+2][n], e[a+2][c[a][n]], e[a+1][c[a][n]], e[a+1][n]]]
+            lookup[0xff ^ i[n] + i[c[a][n]]] = [face[::-1] for face in lookup[i[n] + i[c[a][n]]]]
 
     # three vertices sharing a face and inverse
     for n in range(8):
         for a in range(3):
             lookup[i[n] + i[c[a+1][n]] + i[c[a+2][n]]] = [[e[a][n], e[a][c[a+1][n]], e[a][c[a+2][n]]], [e[a+2][c[a+1][n]], e[a+1][c[a+2][n]], e[a][c[a+2][n]], e[a][c[a+1][n]]]]
-            lookup[0xff ^ i[n] + i[c[a+1][n]] + i[c[a+2][n]]] = [[e[a][n], e[a][c[a+1][n]], e[a][c[a+2][n]]], [e[a+2][c[a+1][n]], e[a+1][c[a+2][n]], e[a][c[a+2][n]], e[a][c[a+1][n]]]]
+            lookup[0xff ^ i[n] + i[c[a+1][n]] + i[c[a+2][n]]] = [face[::-1] for face in lookup[i[n] + i[c[a+1][n]] + i[c[a+2][n]]]]
+
+            if n.bit_count() % 2:
+                lookup[i[n] + i[c[a+1][n]] + i[c[a+2][n]]], lookup[0xff ^ i[n] + i[c[a+1][n]] + i[c[a+2][n]]] = lookup[0xff ^ i[n] + i[c[a+1][n]] + i[c[a+2][n]]], lookup[i[n] + i[c[a+1][n]] + i[c[a+2][n]]]
 
     # four vertices sharing a face
-    for n in (0, 7):
-        for a in range(3):
-            lookup[i[n] + i[c[a+1][n]] + i[c[a+2][n]] + i[c[a+2][c[a+1][n]]]] = [[e[a][n], e[a][c[a+1][n]], e[a][c[a+2][c[a+1][n]]], e[a][c[a+2][n]]]]
+    for a in range(3):
+        lookup[i[0] + i[c[a+1][0]] + i[c[a+2][0]] + i[c[a+2][c[a+1][0]]]] = [[e[a][0], e[a][c[a+1][0]], e[a][c[a+2][c[a+1][0]]], e[a][c[a+2][0]]]]
+
+    for a in range(3):
+        lookup[i[7] + i[c[a+1][7]] + i[c[a+2][7]] + i[c[a+2][c[a+1][7]]]] = [[e[a][c[a+2][c[a+1][7]]], e[a][c[a+1][7]], e[a][7], e[a][c[a+2][7]]]]
 
     # four vertices around a corner
     for n in range(8):
         lookup[i[n] + i[c[a][n]] + i[c[a+1][n]] + i[c[a+2][n]]] = [[e[a+2][c[a][n]], e[a+1][c[a][n]], e[a][c[a+1][n]], e[a+2][c[a+1][n]], e[a+1][c[a+2][n]], e[a][c[a+2][n]]]]
+
+        if n.bit_count() % 2:
+            lookup[i[n] + i[c[a][n]] + i[c[a+1][n]] + i[c[a+2][n]]] = [face[::-1] for face in lookup[i[n] + i[c[a][n]] + i[c[a+1][n]] + i[c[a+2][n]]]]
 
     return lookup
 

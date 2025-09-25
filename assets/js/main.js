@@ -5,7 +5,7 @@ import { mesh } from './mesh.js';
 let sphere = new Sphere(0, 0, 0, 1);
 
 // approximate the sphere as a mesh
-const faces = mesh(sphere, 0.050);
+const faces = mesh(sphere, 0.05);
 
 // the header of an stl file is 80 bytes and can be empty
 const header = new Uint8Array(80);

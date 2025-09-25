@@ -54,7 +54,7 @@ export function mesh(shape, resolution) {
 
                 // compute the index into the lookup table
                 const faceIndex = corners.reduce(
-                    (faceIndex, signedDistance, cornerIndex) => faceIndex + ((signedDistance > 0) << cornerIndex),
+                    (faceIndex, signedDistance, cornerIndex) => faceIndex + ((signedDistance <= 0) << cornerIndex),
                     0,
                 );
 
