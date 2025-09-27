@@ -73,6 +73,19 @@ def generate_face_lookup():
         if n.bit_count() % 2:
             lookup[i[n] + i[c[a][n]] + i[c[a+1][n]] + i[c[a+2][n]]] = [face[::-1] for face in lookup[i[n] + i[c[a][n]] + i[c[a+1][n]] + i[c[a+2][n]]]]
 
+    # two vertices sharing a face but not an edge and inverse
+    for n in (0, 7):
+        for a in range(3):
+            lookup[i[n] + i[c[a+2][c[a+1][n]]]] = [[e[a][c[a+2][c[a+1][n]]], e[a][n], e[a+1][n], e[a+2][c[a+1][n]]], [e[a][n], e[a][c[a+2][c[a+1][n]]], e[a+1][c[a+2][n]], e[a+2][n]]]
+            lookup[0xff ^ i[n] + i[c[a+2][c[a+1][n]]]] = [face[::-1] for face in lookup[i[n] + i[c[a+2][c[a+1][n]]]]]
+
+            lookup[i[c[a+1][n]] + i[c[a+2][n]]] = [[e[a][c[a+2][n]], e[a][c[a+1][n]], e[a+2][c[a+1][n]], e[a+1][c[a+2][n]]], [e[a][c[a+1][n]], e[a][c[a+2][n]], e[a+2][n], e[a+1][n]]]
+            lookup[0xff ^ i[c[a+1][n]] + i[c[a+2][n]]] = [face[::-1] for face in lookup[i[c[a+1][n]] + i[c[a+2][n]]]]
+
+            if n.bit_count() % 2:
+                lookup[i[n] + i[c[a+2][c[a+1][n]]]], lookup[0xff ^ i[n] + i[c[a+2][c[a+1][n]]]] = lookup[0xff ^ i[n] + i[c[a+2][c[a+1][n]]]], lookup[i[n] + i[c[a+2][c[a+1][n]]]]
+                lookup[i[c[a+1][n]] + i[c[a+2][n]]], lookup[0xff ^ i[c[a+1][n]] + i[c[a+2][n]]] = lookup[0xff ^ i[c[a+1][n]] + i[c[a+2][n]]], lookup[i[c[a+1][n]] + i[c[a+2][n]]]
+
     return lookup
 
 if __name__ == '__main__': main()

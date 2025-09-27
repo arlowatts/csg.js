@@ -1,11 +1,11 @@
-import { Sphere } from './primitives.js';
+import { Sphere, Torus } from './primitives.js';
 import { mesh } from './mesh.js';
 
-// initialize a sphere with radius 1
 let sphere = new Sphere(0, 0, 0, 1);
+let torus = new Torus(0, 0, 0, 0.5, 0.03);
 
-// approximate the sphere as a mesh
-const faces = mesh(sphere, 0.05);
+// approximate the scene as a mesh
+const faces = mesh(torus, 0.05);
 
 // the header of an stl file is 80 bytes and can be empty
 const header = new Uint8Array(80);
