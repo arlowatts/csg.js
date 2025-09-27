@@ -42,14 +42,14 @@ export function mesh(shape, resolution) {
 
                 // access the corners of the current cell
                 const corners = [
-                    signedDistances[ i      + size[0] *  j      + size[1] * size[2] *  k     ],
-                    signedDistances[(i + 1) + size[0] *  j      + size[1] * size[2] *  k     ],
-                    signedDistances[ i      + size[0] * (j + 1) + size[1] * size[2] *  k     ],
-                    signedDistances[(i + 1) + size[0] * (j + 1) + size[1] * size[2] *  k     ],
-                    signedDistances[ i      + size[0] *  j      + size[1] * size[2] * (k + 1)],
-                    signedDistances[(i + 1) + size[0] *  j      + size[1] * size[2] * (k + 1)],
-                    signedDistances[ i      + size[0] * (j + 1) + size[1] * size[2] * (k + 1)],
-                    signedDistances[(i + 1) + size[0] * (j + 1) + size[1] * size[2] * (k + 1)],
+                    signedDistances[ i      + size[0] *  j      + size[0] * size[1] *  k     ],
+                    signedDistances[(i + 1) + size[0] *  j      + size[0] * size[1] *  k     ],
+                    signedDistances[ i      + size[0] * (j + 1) + size[0] * size[1] *  k     ],
+                    signedDistances[(i + 1) + size[0] * (j + 1) + size[0] * size[1] *  k     ],
+                    signedDistances[ i      + size[0] *  j      + size[0] * size[1] * (k + 1)],
+                    signedDistances[(i + 1) + size[0] *  j      + size[0] * size[1] * (k + 1)],
+                    signedDistances[ i      + size[0] * (j + 1) + size[0] * size[1] * (k + 1)],
+                    signedDistances[(i + 1) + size[0] * (j + 1) + size[0] * size[1] * (k + 1)],
                 ];
 
                 // compute the index into the lookup table
