@@ -25,6 +25,9 @@ export function mesh(solid, resolution, mergeDistance) {
     // allocate an array to store the interpolant value for each vertex
     const vertexInterpolants = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
 
+    // allocate an array to store the adjacent faces for each vertex
+    const vertexFaces = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
+
     // initialize an array for the resulting faces
     const faces = [];
 
@@ -68,13 +71,16 @@ export function mesh(solid, resolution, mergeDistance) {
                 for (let axis = 0; axis < 3; axis++) {
 
                     // compute the current vertex index
-                    const vertexIndex = axis + 3 * i + 3 * size[0] * j + 3 * size[0] * size[1] * k;
+                    const vertexIndex = axis + 3 * i + 3 * (size[0] - 1) * j + 3 * (size[0] - 1) * (size[1] - 1) * k;
 
                     // store the base position of the vertex
                     vertices[vertexIndex] = [x, y, z];
 
                     // store the vertex index in the map
                     vertexMap[vertexIndex] = vertexIndex;
+
+                    // initialize the array of adjacent faces
+                    vertexFaces[vertexIndex] = [];
 
                     // interpolate the vertex
                     const interpolant = signedDistance / (signedDistance - corners[axis]);
@@ -102,12 +108,12 @@ export function mesh(solid, resolution, mergeDistance) {
 
                 // compute the vertex indices around the current grid point
                 const vertexIndices = [
-                    0 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
-                    1 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
-                    2 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
-                    0 + 3 * (i - 1) + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
-                    1 + 3 *  i      + 3 * size[0] * (j - 1) + 3 * size[0] * size[1] *  k     ,
-                    2 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] * (k - 1),
+                    0 + 3 *  i      + 3 * (size[0] - 1) *  j      + 3 * (size[0] - 1) * (size[1] - 1) *  k     ,
+                    1 + 3 *  i      + 3 * (size[0] - 1) *  j      + 3 * (size[0] - 1) * (size[1] - 1) *  k     ,
+                    2 + 3 *  i      + 3 * (size[0] - 1) *  j      + 3 * (size[0] - 1) * (size[1] - 1) *  k     ,
+                    0 + 3 * (i - 1) + 3 * (size[0] - 1) *  j      + 3 * (size[0] - 1) * (size[1] - 1) *  k     ,
+                    1 + 3 *  i      + 3 * (size[0] - 1) * (j - 1) + 3 * (size[0] - 1) * (size[1] - 1) *  k     ,
+                    2 + 3 *  i      + 3 * (size[0] - 1) *  j      + 3 * (size[0] - 1) * (size[1] - 1) * (k - 1),
                 ];
 
                 // initialize an array for the merged vertices
@@ -145,6 +151,7 @@ export function mesh(solid, resolution, mergeDistance) {
 
                     // add the merged vertex to the array of vertices
                     const mergedVertexIndex = vertices.push(mergedVertex) - 1;
+                    vertexFaces.push([]);
 
                     // replace the merged vertices with the new vertex
                     for (const vertexIndex of mergedVertices) {
@@ -180,7 +187,7 @@ export function mesh(solid, resolution, mergeDistance) {
 
                 // compute the vertex indices of the current cell
                 const vertexIndices = vertexLookup.map(
-                    (vertex) => vertex[0] + 3 * (i + vertex[2][0]) + 3 * size[0] * (j + vertex[2][1]) + 3 * size[0] * size[1] * (k + vertex[2][2])
+                    (vertex) => vertex[0] + 3 * (i + vertex[2][0]) + 3 * (size[0] - 1) * (j + vertex[2][1]) + 3 * (size[0] - 1) * (size[1] - 1) * (k + vertex[2][2])
                 );
 
                 // access the face information from the lookup table
@@ -196,11 +203,32 @@ export function mesh(solid, resolution, mergeDistance) {
                         if (face[0] !== face[n - 1] && face[n - 1] !== face[n] && face[n] !== face[0]) {
 
                             // append the triangle to the mesh
-                            faces.push([vertices[face[0]], vertices[face[n - 1]], vertices[face[n]]]);
+                            const faceIndex = faces.push([vertices[face[0]], vertices[face[n - 1]], vertices[face[n]]]) - 1;
+
+                            // append this face to the arrays of adjacent faces
+                            vertexFaces[face[0]].push(faceIndex);
+                            vertexFaces[face[n - 1]].push(faceIndex);
+                            vertexFaces[face[n]].push(faceIndex);
                         }
                     }
                 }
             }
+        }
+    }
+
+    // prune vertices with only two adjacent faces
+    for (let n = 0; n < vertexMap.length; n++) {
+
+        // check the number of faces of the mapped vertex
+        if (vertexFaces[vertexMap[n]].length < 3) {
+
+            // delete the extraneous faces
+            for (const faceIndex of vertexFaces[vertexMap[n]]) {
+                delete faces[faceIndex];
+            }
+
+            // clear the array of adjacent faces
+            vertexFaces[vertexMap[n]] = [];
         }
     }
 

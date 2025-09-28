@@ -9,13 +9,22 @@ let union = new Union([sphere, torus]);
 // approximate the scene as a mesh
 const faces = mesh(union, 0.05, 0.4);
 
-console.log(faces.length);
+// count the actual number of faces in the mesh
+let faceCount = 0;
+
+for (const face of faces) {
+    if (face) {
+        faceCount++;
+    }
+}
+
+console.log(faceCount);
 
 // the header of an stl file is 80 bytes and can be empty
 const header = new Uint8Array(80);
 
 // a single 32-bit unsigned integer represents the number of faces
-const triangleCount = new Uint32Array([faces.length]);
+const triangleCount = new Uint32Array([faceCount]);
 
 // define an empty normal vector
 const normalVector = new Float32Array([0, 0, 0]);
@@ -28,17 +37,19 @@ const data = [header, triangleCount];
 
 // load the face data
 for (const face of faces) {
+    if (face) {
 
-    // add a normal vector
-    data.push(normalVector)
+        // add a normal vector
+        data.push(normalVector)
 
-    // add the vertices
-    for (const vertex of face) {
-        data.push(new Float32Array(vertex));
+        // add the vertices
+        for (const vertex of face) {
+            data.push(new Float32Array(vertex));
+        }
+
+        // add the empty attribute bytes
+        data.push(attributeByteCount);
     }
-
-    // add the empty attribute bytes
-    data.push(attributeByteCount);
 }
 
 // create a blob for the stl data
@@ -46,7 +57,6 @@ const blob = new Blob(data, { type: 'model/stl' });
 
 // create a url referencing the blob
 const url = URL.createObjectURL(blob);
-// URL.revokeObjectURL(url);
 
 // create a link to download the data
 const link = document.createElement('a');
