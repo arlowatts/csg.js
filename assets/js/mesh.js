@@ -1,7 +1,7 @@
 import { faceLookup, vertexLookup } from './lookups.js';
 
 // return a mesh approximating a solid
-export function mesh(solid, resolution) {
+export function mesh(solid, resolution, mergeDistance) {
 
     // get the rectangular bounding volume of the solid
     const bound = solid.bound();
@@ -18,6 +18,12 @@ export function mesh(solid, resolution) {
 
     // allocate an array for the vertex positions
     const vertices = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
+
+    // allocate an array to map vertex indices in the vertices array
+    const vertexMap = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
+
+    // allocate an array to store the interpolant value for each vertex
+    const vertexInterpolants = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
 
     // initialize an array for the resulting faces
     const faces = [];
@@ -58,20 +64,91 @@ export function mesh(solid, resolution) {
                     signedDistances[ i      + size[0] *  j      + size[0] * size[1] * (k + 1)],
                 ];
 
-                // interpolate the three vertices adjacent to the current grid point
+                // interpolate the vertices adjacent to the current grid point
                 for (let axis = 0; axis < 3; axis++) {
 
                     // compute the current vertex index
-                    const index = axis + 3 * i + 3 * size[0] * j + 3 * size[0] * size[1] * k;
+                    const vertexIndex = axis + 3 * i + 3 * size[0] * j + 3 * size[0] * size[1] * k;
 
                     // store the base position of the vertex
-                    vertices[index] = [x, y, z];
+                    vertices[vertexIndex] = [x, y, z];
+
+                    // store the vertex index in the map
+                    vertexMap[vertexIndex] = vertexIndex;
 
                     // interpolate the vertex
                     const interpolant = signedDistance / (signedDistance - corners[axis]);
 
+                    // shift the vertex by the interpolated value
                     if (interpolant >= 0 && interpolant <= 1) {
-                        vertices[index][axis] += resolution * interpolant;
+                        vertices[vertexIndex][axis] += resolution * interpolant;
+                        vertexInterpolants[vertexIndex] = interpolant;
+                    }
+
+                    // use a default value of 0.5 if the surface is far away
+                    else {
+                        vertices[vertexIndex][axis] += resolution * 0.5;
+                        vertexInterpolants[vertexIndex] = 0.5;
+                    }
+                }
+            }
+        }
+    }
+
+    // merge close vertices
+    for (let k = 1; k < size[2] - 1; k++) {
+        for (let j = 1; j < size[1] - 1; j++) {
+            for (let i = 1; i < size[0] - 1; i++) {
+
+                // compute the vertex indices around the current grid point
+                const vertexIndices = [
+                    0 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
+                    1 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
+                    2 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
+                    0 + 3 * (i - 1) + 3 * size[0] *  j      + 3 * size[0] * size[1] *  k     ,
+                    1 + 3 *  i      + 3 * size[0] * (j - 1) + 3 * size[0] * size[1] *  k     ,
+                    2 + 3 *  i      + 3 * size[0] *  j      + 3 * size[0] * size[1] * (k - 1),
+                ];
+
+                // initialize an array for the merged vertices
+                const mergedVertices = [];
+
+                // find vertices close to the grid point
+                for (let n = 0; n < 3; n++) {
+                    if (vertexInterpolants[vertexIndices[n]] <= mergeDistance) {
+                        mergedVertices.push(vertexIndices[n]);
+                    }
+                }
+
+                for (let n = 3; n < 6; n++) {
+                    if (vertexInterpolants[vertexIndices[n]] >= 1 - mergeDistance) {
+                        mergedVertices.push(vertexIndices[n]);
+                    }
+                }
+
+                // replace merged vertices with their average position
+                if (mergedVertices.length > 1) {
+
+                    // initialize the mean position of the merged vertices
+                    const mergedVertex = [0, 0, 0];
+
+                    // compute the mean position
+                    for (const vertexIndex of mergedVertices) {
+                        for (let axis = 0; axis < 3; axis++) {
+                            mergedVertex[axis] += vertices[vertexIndex][axis];
+                        }
+                    }
+
+                    for (let axis = 0; axis < 3; axis++) {
+                        mergedVertex[axis] /= mergedVertices.length;
+                    }
+
+                    // add the merged vertex to the array of vertices
+                    const mergedVertexIndex = vertices.push(mergedVertex) - 1;
+
+                    // replace the merged vertices with the new vertex
+                    for (const vertexIndex of mergedVertices) {
+                        vertexMap[vertexIndex] = mergedVertexIndex;
                     }
                 }
             }
@@ -110,15 +187,17 @@ export function mesh(solid, resolution) {
                 for (let face of faceLookup[faceIndex]) {
 
                     // access the vertices of the faces
-                    face = face.map(
-                        (vertexIndex) => vertices[vertexIndices[vertexIndex]]
-                    );
+                    face = face.map((vertexIndex) => vertexMap[vertexIndices[vertexIndex]]);
 
                     // triangulate the face as a triangle fan
                     for (let n = 2; n < face.length; n++) {
 
-                        // append the triangle to the mesh
-                        faces.push([face[0], face[n - 1], face[n]]);
+                        // omit faces with merged vertices
+                        if (face[0] !== face[n - 1] && face[n - 1] !== face[n] && face[n] !== face[0]) {
+
+                            // append the triangle to the mesh
+                            faces.push([vertices[face[0]], vertices[face[n - 1]], vertices[face[n]]]);
+                        }
                     }
                 }
             }

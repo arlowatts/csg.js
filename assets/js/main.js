@@ -7,7 +7,9 @@ let torus = new Torus(0, 0, 1, 0.5, 0.2);
 let union = new Union([sphere, torus]);
 
 // approximate the scene as a mesh
-const faces = mesh(union, 0.05);
+const faces = mesh(union, 0.05, 0.4);
+
+console.log(faces.length);
 
 // the header of an stl file is 80 bytes and can be empty
 const header = new Uint8Array(80);
