@@ -7,13 +7,13 @@ export class Sphere {
         this.radius = radius;
     }
 
-    // return the signed distance to the surface of the sphere
+    // return the signed distance to the surface of the solid
     signedDistance(x, y, z) {
         return Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2 + (z - this.z) ** 2) - this.radius;
     }
 
-    // return two corners defining a rectangular volume containing the sphere
-    bounds() {
+    // return two corners defining a rectangular volume containing the solid
+    bound() {
         return [
             [this.x - this.radius, this.y - this.radius, this.z - this.radius],
             [this.x + this.radius, this.y + this.radius, this.z + this.radius],
@@ -31,13 +31,13 @@ export class Torus {
         this.radiusMinor = radiusMinor;
     }
 
-    // return the signed distance to the surface of the sphere
+    // return the signed distance to the surface of the solid
     signedDistance(x, y, z) {
         return Math.sqrt((Math.sqrt((x - this.x) ** 2 + (y - this.y) ** 2) - this.radiusMajor) ** 2 + (z - this.z) ** 2) - this.radiusMinor;
     }
 
-    // return two corners defining a rectangular volume containing the sphere
-    bounds() {
+    // return two corners defining a rectangular volume containing the solid
+    bound() {
         return [
             [this.x - this.radiusMajor - this.radiusMinor, this.y - this.radiusMajor - this.radiusMinor, this.z - this.radiusMinor],
             [this.x + this.radiusMajor + this.radiusMinor, this.y + this.radiusMajor + this.radiusMinor, this.z + this.radiusMinor],
