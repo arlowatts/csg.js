@@ -187,7 +187,7 @@ export function mesh(solid, resolution, mergeDistance) {
 
                 // compute the vertex indices of the current cell
                 const vertexIndices = vertexLookup.map(
-                    (vertex) => vertex[0] + 3 * (i + vertex[2][0]) + 3 * (size[0] - 1) * (j + vertex[2][1]) + 3 * (size[0] - 1) * (size[1] - 1) * (k + vertex[2][2])
+                    (vertex) => vertex[0] + 3 * (i + vertex[1][0]) + 3 * (size[0] - 1) * (j + vertex[1][1]) + 3 * (size[0] - 1) * (size[1] - 1) * (k + vertex[1][2])
                 );
 
                 // access the face information from the lookup table

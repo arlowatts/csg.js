@@ -27,7 +27,7 @@ def generate_vertex_lookup():
 
     for n in (0, 3, 5, 6):
         for a in range(3):
-            lookup[e[a][n]] = [a, sorted([n, c[a][n]]), [n & c[a][n] & 1, (n & c[a][n] & 2) >> 1, (n & c[a][n] & 4) >> 2]]
+            lookup[e[a][n]] = [a, [n & c[a][n] & 1, (n & c[a][n] & 2) >> 1, (n & c[a][n] & 4) >> 2]]
 
     return lookup
 
