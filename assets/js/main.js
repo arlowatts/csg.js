@@ -47,7 +47,7 @@ for (const face of faceList) {
 }
 
 // create a blob for the file data
-const blob = new Blob(startHeader + vertexHeader + faceHeader + endHeader + data);
+const blob = new Blob([...startHeader, ...vertexHeader, ...faceHeader, ...endHeader, ...data]);
 
 // create a url referencing the blob
 const url = URL.createObjectURL(blob);
