@@ -4,104 +4,24 @@ import { faceLookup, vertexLookup } from './lookups.js';
 export function mesh(solid, resolution, mergeDistance) {
 
     // get the rectangular bounding volume of the solid
-    const bound = solid.bound();
+    const [origin, terminus] = solid.bound();
 
-    // compute the number of grid points needed to cover the volume
-    const size = [
-        Math.ceil((bound[1][0] - bound[0][0]) / resolution) + 2,
-        Math.ceil((bound[1][1] - bound[0][1]) / resolution) + 2,
-        Math.ceil((bound[1][2] - bound[0][2]) / resolution) + 2,
-    ];
+    // compute the number of cells needed to cover the volume
+    const size = [];
 
-    // allocate an array for the signed distance grid
-    const signedDistances = new Array(size[0] * size[1] * size[2]);
-
-    // allocate an array for the vertex positions
-    const vertices = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
-
-    // allocate an array to map vertex indices in the vertices array
-    const vertexMap = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
-
-    // allocate an array to store the interpolant value for each vertex
-    const vertexInterpolants = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
-
-    // allocate an array to store the adjacent faces for each vertex
-    const vertexFaces = new Array(3 * (size[0] - 1) * (size[1] - 1) * (size[2] - 1));
-
-    // initialize an array for the resulting faces
-    const faces = [];
-
-    // evaluate the signed distance to the solid at each point on the grid
-    for (let k = 0; k < size[2]; k++) {
-        for (let j = 0; j < size[1]; j++) {
-            for (let i = 0; i < size[0]; i++) {
-
-                // compute the position of the current grid point
-                const x = bound[0][0] + (i - 0.5) * resolution;
-                const y = bound[0][1] + (j - 0.5) * resolution;
-                const z = bound[0][2] + (k - 0.5) * resolution;
-
-                // store the signed distance to the solid
-                signedDistances[i + size[0] * j + size[0] * size[1] * k] = solid.signedDistance(x, y, z);
-            }
-        }
+    for (let axis = 0; axis < 3; axis++) {
+        size[axis] = Math.ceil((terminus[axis] - origin[axis]) / resolution) + 1;
     }
 
-    // compute the positions of the vertices
-    for (let k = 0; k < size[2] - 1; k++) {
-        for (let j = 0; j < size[1] - 1; j++) {
-            for (let i = 0; i < size[0] - 1; i++) {
+    const signedDistances = getSignedDistances(origin, resolution, size, solid);
 
-                // compute the position of the current grid point
-                const x = bound[0][0] + (i - 0.5) * resolution;
-                const y = bound[0][1] + (j - 0.5) * resolution;
-                const z = bound[0][2] + (k - 0.5) * resolution;
+    const vertices = getVertices(origin, resolution, size, signedDistances);
 
-                // access the distance at the current grid point
-                const signedDistance = signedDistances[i + size[0] * j + size[0] * size[1] * k];
+    const faces = getFaces(size, signedDistances);
 
-                // access the three adjacent corners of the current cell
-                const corners = [
-                    signedDistances[(i + 1) + size[0] *  j      + size[0] * size[1] *  k     ],
-                    signedDistances[ i      + size[0] * (j + 1) + size[0] * size[1] *  k     ],
-                    signedDistances[ i      + size[0] *  j      + size[0] * size[1] * (k + 1)],
-                ];
+    return faces.map((face) => face.map((vertex) => vertices[vertex[0]][vertex[1]][vertex[2]][vertex[3]]));
 
-                // interpolate the vertices adjacent to the current grid point
-                for (let axis = 0; axis < 3; axis++) {
-
-                    // compute the current vertex index
-                    const vertexIndex = axis + 3 * i + 3 * (size[0] - 1) * j + 3 * (size[0] - 1) * (size[1] - 1) * k;
-
-                    // store the base position of the vertex
-                    vertices[vertexIndex] = [x, y, z];
-
-                    // store the vertex index in the map
-                    vertexMap[vertexIndex] = vertexIndex;
-
-                    // initialize the array of adjacent faces
-                    vertexFaces[vertexIndex] = [];
-
-                    // interpolate the vertex
-                    const interpolant = signedDistance / (signedDistance - corners[axis]);
-
-                    // shift the vertex by the interpolated value
-                    if (interpolant >= 0 && interpolant <= 1) {
-                        vertices[vertexIndex][axis] += resolution * interpolant;
-                        vertexInterpolants[vertexIndex] = interpolant;
-                    }
-
-                    // use a default value of 0.5 if the surface is far away
-                    else {
-                        vertices[vertexIndex][axis] += resolution * 0.5;
-                        vertexInterpolants[vertexIndex] = 0.5;
-                    }
-                }
-            }
-        }
-    }
-
-    // merge close vertices
+    /*// merge close vertices
     for (let k = 1; k < size[2] - 1; k++) {
         for (let j = 1; j < size[1] - 1; j++) {
             for (let i = 1; i < size[0] - 1; i++) {
@@ -162,60 +82,6 @@ export function mesh(solid, resolution, mergeDistance) {
         }
     }
 
-    // compute the resulting triangular faces
-    for (let k = 0; k < size[2] - 1; k++) {
-        for (let j = 0; j < size[1] - 1; j++) {
-            for (let i = 0; i < size[0] - 1; i++) {
-
-                // access the corners of the current cell
-                const corners = [
-                    signedDistances[ i      + size[0] *  j      + size[0] * size[1] *  k     ],
-                    signedDistances[(i + 1) + size[0] *  j      + size[0] * size[1] *  k     ],
-                    signedDistances[ i      + size[0] * (j + 1) + size[0] * size[1] *  k     ],
-                    signedDistances[(i + 1) + size[0] * (j + 1) + size[0] * size[1] *  k     ],
-                    signedDistances[ i      + size[0] *  j      + size[0] * size[1] * (k + 1)],
-                    signedDistances[(i + 1) + size[0] *  j      + size[0] * size[1] * (k + 1)],
-                    signedDistances[ i      + size[0] * (j + 1) + size[0] * size[1] * (k + 1)],
-                    signedDistances[(i + 1) + size[0] * (j + 1) + size[0] * size[1] * (k + 1)],
-                ];
-
-                // compute the index into the lookup table
-                const faceIndex = corners.reduce(
-                    (faceIndex, signedDistance, cornerIndex) => faceIndex + ((signedDistance <= 0) << cornerIndex),
-                    0,
-                );
-
-                // compute the vertex indices of the current cell
-                const vertexIndices = vertexLookup.map(
-                    (vertex) => vertex[0] + 3 * (i + vertex[1][0]) + 3 * (size[0] - 1) * (j + vertex[1][1]) + 3 * (size[0] - 1) * (size[1] - 1) * (k + vertex[1][2])
-                );
-
-                // access the face information from the lookup table
-                for (let face of faceLookup[faceIndex]) {
-
-                    // access the vertices of the faces
-                    face = face.map((vertexIndex) => vertexMap[vertexIndices[vertexIndex]]);
-
-                    // triangulate the face as a triangle fan
-                    for (let n = 2; n < face.length; n++) {
-
-                        // omit faces with merged vertices
-                        if (face[0] !== face[n - 1] && face[n - 1] !== face[n] && face[n] !== face[0]) {
-
-                            // append the triangle to the mesh
-                            const faceIndex = faces.push([vertices[face[0]], vertices[face[n - 1]], vertices[face[n]]]) - 1;
-
-                            // append this face to the arrays of adjacent faces
-                            vertexFaces[face[0]].push(faceIndex);
-                            vertexFaces[face[n - 1]].push(faceIndex);
-                            vertexFaces[face[n]].push(faceIndex);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     // prune vertices with only two adjacent faces
     for (let n = 0; n < vertexMap.length; n++) {
 
@@ -230,7 +96,136 @@ export function mesh(solid, resolution, mergeDistance) {
             // clear the array of adjacent faces
             vertexFaces[vertexMap[n]] = [];
         }
+    }*/
+}
+
+// get the surface triangulation from the lookup table
+function getFaces(size, signedDistances) {
+    const faces = [];
+
+    for (let i = 0; i < size[0]; i++) {
+        for (let j = 0; j < size[1]; j++) {
+            for (let k = 0; k < size[2]; k++) {
+
+                // get the signed distance at all grid points in the cell
+                const corners = [
+                    signedDistances[i    ][j    ][k    ],
+                    signedDistances[i + 1][j    ][k    ],
+                    signedDistances[i    ][j + 1][k    ],
+                    signedDistances[i + 1][j + 1][k    ],
+                    signedDistances[i    ][j    ][k + 1],
+                    signedDistances[i + 1][j    ][k + 1],
+                    signedDistances[i    ][j + 1][k + 1],
+                    signedDistances[i + 1][j + 1][k + 1],
+                ];
+
+                // compute the index into the lookup table
+                const faceLookupIndex = corners.reduce(
+                    (faceLookupIndex, signedDistance, cornerIndex) => faceLookupIndex + ((signedDistance <= 0) << cornerIndex),
+                    0,
+                );
+
+                for (let face of faceLookup[faceLookupIndex]) {
+
+                    // translate vertex lookup indices to vertex array indices
+                    face = face.map(
+                        (vertexIndex) => [
+                            i + vertexLookup[vertexIndex][1][0],
+                            j + vertexLookup[vertexIndex][1][1],
+                            k + vertexLookup[vertexIndex][1][2],
+                            vertexLookup[vertexIndex][0],
+                        ]
+                    );
+
+                    // triangulate the face
+                    for (let n = 2; n < face.length; n++) {
+                        faces.push([face[0], face[n - 1], face[n]]);
+                    }
+                }
+            }
+        }
     }
 
     return faces;
+}
+
+// interpolate the position of every vertex in the grid
+function getVertices(origin, resolution, size, signedDistances) {
+    const vertices = [];
+
+    for (let i = 0; i < size[0]; i++) {
+        vertices[i] = [];
+
+        for (let j = 0; j < size[1]; j++) {
+            vertices[i][j] = [];
+
+            for (let k = 0; k < size[2]; k++) {
+                vertices[i][j][k] = [];
+
+                // get the position of the current grid point
+                const gridPoint = getGridPoint(origin, resolution, [i, j, k]);
+
+                // get the signed distance at adjacent grid points
+                const corners = [
+                    signedDistances[i + 1][j][k],
+                    signedDistances[i][j + 1][k],
+                    signedDistances[i][j][k + 1],
+                ];
+
+                for (let axis = 0; axis < 3; axis++) {
+                    const interpolant = signedDistances[i][j][k] / (signedDistances[i][j][k] - corners[axis]);
+
+                    // set the base position of the vertex
+                    vertices[i][j][k][axis] = [...gridPoint];
+
+                    // add the value of the valid interpolant
+                    if (interpolant >= 0 && interpolant <= 1) {
+                        vertices[i][j][k][axis][axis] += resolution * interpolant;
+                    }
+
+                    // add a default value if the interpolant is invalid
+                    else {
+                        vertices[i][j][k][axis][axis] += resolution * 0.5;
+                    }
+                }
+            }
+        }
+    }
+
+    return vertices;
+}
+
+// evaluate the signed distance to the solid at each point on the grid
+function getSignedDistances(origin, resolution, size, solid) {
+    const signedDistances = [];
+
+    for (let i = 0; i < size[0] + 1; i++) {
+        signedDistances[i] = [];
+
+        for (let j = 0; j < size[1] + 1; j++) {
+            signedDistances[i][j] = [];
+
+            for (let k = 0; k < size[2] + 1; k++) {
+
+                // get the position of the current grid point
+                const gridPoint = getGridPoint(origin, resolution, [i, j, k]);
+
+                // evaluate the signed distance function at the grid point
+                signedDistances[i][j][k] = solid.signedDistance(...gridPoint);
+            }
+        }
+    }
+
+    return signedDistances;
+}
+
+// compute the position of a grid point
+function getGridPoint(origin, resolution, gridCoordinates) {
+    const gridPoint = [];
+
+    for (let axis = 0; axis < 3; axis++) {
+        gridPoint[axis] = origin[axis] + (gridCoordinates[axis] - 0.5) * resolution;
+    }
+
+    return gridPoint;
 }
