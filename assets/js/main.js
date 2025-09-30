@@ -10,37 +10,44 @@ const union = new Union([sphere, torus]);
 // approximate the scene as a mesh
 const [vertexList, faceList] = mesh(union, 0.05, 0.4);
 
-// the header of an stl file is 80 bytes and can be empty
-const header = new Uint8Array(80);
+// every ply file starts with the string 'ply' and a format description
+const startHeader = [
+    'ply\n',
+    'format binary_little_endian 1.0\n'
+];
 
-// a single 32-bit unsigned integer represents the number of faces
-const triangleCount = new Uint32Array([faceList.length]);
+// describe the number and properties of vertices
+const vertexHeader = [
+    `element vertex ${vertexList.length}\n`,
+    'property float x\n',
+    'property float y\n',
+    'property float z\n',
+];
 
-// define an empty normal vector
-const normalVector = new Float32Array([0, 0, 0]);
+// describe the number and properties of faces
+const faceHeader = [
+    `element face ${faceList.length}\n`,
+    'property list uchar uint vertex_indices\n',
+];
 
-// define a default attribute byte
-const attributeByteCount = new Uint16Array([0]);
+const endHeader = ['end_header\n'];
 
-// initialize the data of the stl file
-const data = [header, triangleCount];
+// initialize an array for binary data
+const data = [];
 
-// load the face data
-for (const face of faceList) {
-    // add a normal vector
-    data.push(normalVector)
-
-    // add the vertices
-    for (const vertex of face) {
-        data.push(new Float32Array(vertexList[vertex]));
-    }
-
-    // add the empty attribute bytes
-    data.push(attributeByteCount);
+// add the vertices to the array of data
+for (const vertex of vertexList) {
+    data.push(new Float32Array(vertex));
 }
 
-// create a blob for the stl data
-const blob = new Blob(data, { type: 'model/stl' });
+// add the faces to the array of data
+for (const face of faceList) {
+    data.push(new Uint8Array([face.length]));
+    data.push(new Uint32Array(face));
+}
+
+// create a blob for the file data
+const blob = new Blob(startHeader + vertexHeader + faceHeader + endHeader + data);
 
 // create a url referencing the blob
 const url = URL.createObjectURL(blob);
@@ -48,6 +55,6 @@ const url = URL.createObjectURL(blob);
 // create a link to download the data
 const link = document.createElement('a');
 link.href = url;
-link.download = 'model.stl';
+link.download = 'model.ply';
 link.innerText = 'Download';
 document.body.appendChild(link);
