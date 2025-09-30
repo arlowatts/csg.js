@@ -17,9 +17,7 @@ export function mesh(solid, resolution, mergeDistance) {
 
     const vertices = getVertices(origin, resolution, size, signedDistances);
 
-    const faces = getFaces(size, signedDistances);
-
-    return faces.map((face) => face.map((vertex) => vertices[vertex[0]][vertex[1]][vertex[2]][vertex[3]]));
+    return getFaces(size, signedDistances, vertices);
 
     /*// merge close vertices
     for (let k = 1; k < size[2] - 1; k++) {
@@ -100,8 +98,10 @@ export function mesh(solid, resolution, mergeDistance) {
 }
 
 // get the surface triangulation from the lookup table
-function getFaces(size, signedDistances) {
-    const faces = [];
+function getFaces(size, signedDistances, vertices) {
+    const vertexMap = {};
+    const vertexList = [];
+    const faceList = [];
 
     for (let i = 0; i < size[0]; i++) {
         for (let j = 0; j < size[1]; j++) {
@@ -125,28 +125,47 @@ function getFaces(size, signedDistances) {
                     0,
                 );
 
-                for (let face of faceLookup[faceLookupIndex]) {
+                for (const face of faceLookup[faceLookupIndex]) {
+                    const translatedFace = [];
 
-                    // translate vertex lookup indices to vertex array indices
-                    face = face.map(
-                        (vertexIndex) => [
-                            i + vertexLookup[vertexIndex][1][0],
-                            j + vertexLookup[vertexIndex][1][1],
-                            k + vertexLookup[vertexIndex][1][2],
-                            vertexLookup[vertexIndex][0],
-                        ]
-                    );
+                    for (let n = 0; n < face.length; n++) {
+
+                        // translate the lookup index to an array index
+                        const vertex = [
+                            i + vertexLookup[face[n]][1][0],
+                            j + vertexLookup[face[n]][1][1],
+                            k + vertexLookup[face[n]][1][2],
+                            vertexLookup[face[n]][0],
+                        ];
+
+                        // access the position of the vertex
+                        const vertexPosition = vertices[vertex[0]][vertex[1]][vertex[2]][vertex[3]];
+
+                        // compute a unique integer index for the vertex
+                        const vertexId =
+                            vertex[0] +
+                            vertex[1] * size[0] +
+                            vertex[2] * size[0] * size[1] +
+                            vertex[3] * size[0] * size[1] * size[2];
+
+                        // update the vertex map
+                        if (vertexMap[vertexId] === undefined) {
+                            vertexMap[vertexId] = vertexList.push(vertexPosition) - 1;
+                        }
+
+                        translatedFace.push(vertexMap[vertexId]);
+                    }
 
                     // triangulate the face
-                    for (let n = 2; n < face.length; n++) {
-                        faces.push([face[0], face[n - 1], face[n]]);
+                    for (let n = 2; n < translatedFace.length; n++) {
+                        faceList.push([translatedFace[0], translatedFace[n - 1], translatedFace[n]]);
                     }
                 }
             }
         }
     }
 
-    return faces;
+    return [vertexList, faceList];
 }
 
 // interpolate the position of every vertex in the grid

@@ -2,29 +2,19 @@ import { Sphere, Torus } from './primitives.js';
 import { Union } from './operators.js';
 import { mesh } from './mesh.js';
 
-let sphere = new Sphere(0, 0, 0, 1);
-let torus = new Torus(0, 0, 1, 0.5, 0.2);
-let union = new Union([sphere, torus]);
+// create the scene
+const sphere = new Sphere(0, 0, 0, 1);
+const torus = new Torus(0, 0, 1, 0.5, 0.2);
+const union = new Union([sphere, torus]);
 
 // approximate the scene as a mesh
-const faces = mesh(union, 0.05, 0.4);
-
-// count the actual number of faces in the mesh
-let faceCount = 0;
-
-for (const face of faces) {
-    if (face) {
-        faceCount++;
-    }
-}
-
-console.log(faceCount);
+const [vertexList, faceList] = mesh(union, 0.05, 0.4);
 
 // the header of an stl file is 80 bytes and can be empty
 const header = new Uint8Array(80);
 
 // a single 32-bit unsigned integer represents the number of faces
-const triangleCount = new Uint32Array([faceCount]);
+const triangleCount = new Uint32Array([faceList.length]);
 
 // define an empty normal vector
 const normalVector = new Float32Array([0, 0, 0]);
@@ -36,20 +26,17 @@ const attributeByteCount = new Uint16Array([0]);
 const data = [header, triangleCount];
 
 // load the face data
-for (const face of faces) {
-    if (face) {
+for (const face of faceList) {
+    // add a normal vector
+    data.push(normalVector)
 
-        // add a normal vector
-        data.push(normalVector)
-
-        // add the vertices
-        for (const vertex of face) {
-            data.push(new Float32Array(vertex));
-        }
-
-        // add the empty attribute bytes
-        data.push(attributeByteCount);
+    // add the vertices
+    for (const vertex of face) {
+        data.push(new Float32Array(vertexList[vertex]));
     }
+
+    // add the empty attribute bytes
+    data.push(attributeByteCount);
 }
 
 // create a blob for the stl data
